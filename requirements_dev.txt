@@ -1,0 +1,10 @@
+flake8
+pylint
+black
+isort
+mypy
+
+pytest
+coverage
+
+build

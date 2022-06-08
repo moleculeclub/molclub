@@ -1,0 +1,10 @@
+LICENSE
+README.md
+pyproject.toml
+setup.cfg
+molclub/__init__.py
+molclub.egg-info/PKG-INFO
+molclub.egg-info/SOURCES.txt
+molclub.egg-info/dependency_links.txt
+molclub.egg-info/requires.txt
+molclub.egg-info/top_level.txt

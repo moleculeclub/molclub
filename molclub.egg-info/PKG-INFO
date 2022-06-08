@@ -1,0 +1,6 @@
+Metadata-Version: 2.1
+Name: molclub
+Version: 0.0.1
+Summary: Cheminformatics package built on RDKit
+Classifier: Programming Language :: Python :: 3
+License-File: LICENSE
