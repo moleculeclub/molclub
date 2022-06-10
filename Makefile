@@ -3,14 +3,13 @@ dev-install:
 	pip install -e .
 
 pre-commit:
+	mypy molclub tests
 	isort molclub tests
 	black molclub tests
 	flake8 molclub tests
-	pylint molclub tests
-	mypy molclub tests 
 
 test:
-	pytest -v
+	pytest -v tests
 
 build:
 	python -m build
