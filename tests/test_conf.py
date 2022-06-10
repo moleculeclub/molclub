@@ -44,7 +44,7 @@ def test_mmff_optimization():
     mol_1 = conf.etkdg_conf_gen(
         mol_1,
     )
-    energies, conformers = conf.mmff_optimization(mol_1)
+    conformers, energies = conf.mmff_optimization(mol_1)
     assert energies[0] == approx(-4.734365292858474, 0.1)
     # add checker for RMSD of conformer
 
@@ -53,7 +53,7 @@ def test_mmff_optimization():
         mol_2,
         prune_rms_thresh=0.1,
     )
-    energies, conformers = conf.mmff_optimization(mol_2)
+    conformers, energies = conf.mmff_optimization(mol_2)
     assert energies[0] == approx(7.7815197115773875, 0.1)
     # add checker for RMSD of conformer
 
@@ -61,6 +61,6 @@ def test_mmff_optimization():
     mol_3 = conf.etkdg_conf_gen(
         mol_3,
     )
-    energies, conformers = conf.mmff_optimization(mol_3)
+    conformers, energies = conf.mmff_optimization(mol_3)
     assert energies[0] == approx(32.0, 1)
     # add checker for RMSD of conformer

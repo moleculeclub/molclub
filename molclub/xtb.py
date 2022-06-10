@@ -13,28 +13,38 @@ from molclub import calc, utils
 
 def get_xtb_energy(
     mol: Chem.rdchem.Mol,
-    charge: int = 0,
     num_unpaired_electrons: int = 0,
 ) -> float:
     xtb_result = job(
         mol,
-        Parameters(),
-        charge=charge,
+        Parameters(num_threads=4),
+        charge=Chem.GetFormalCharge(mol),
         num_unpaired_electrons=num_unpaired_electrons,
     )
     return xtb_result.energy_kcal
 
 
+def order_conformers(
+    mols: List[Chem.rdchem.Mol],
+) -> List[Chem.rdchem.Mol]:
+    energies = []
+    for mol in mols:
+        energies.append(get_xtb_energy(mol))
+
+    energies, mols = zip(*sorted(zip(energies, mols)))
+
+    return mols, energies
+
+
 def optimize_xtb(
     input_mol: Chem.rdchem.Mol,
-    charge: int = 0,
     num_unpaired_electrons: int = 0,
 ) -> Tuple[Chem.rdchem.Mol, float]:
     xtb_result = job(
         input_mol,
-        Parameters(),
+        Parameters(num_threads=4),
         job_type="opt",
-        charge=charge,
+        charge=Chem.GetFormalCharge(input_mol),
         num_unpaired_electrons=num_unpaired_electrons,
     )
     mol = Chem.rdchem.Mol(input_mol, quickCopy=True)
