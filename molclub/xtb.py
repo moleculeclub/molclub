@@ -1,40 +1,63 @@
 import re
 import subprocess
 from dataclasses import dataclass
-from os.path import isdir
+from os.path import exists, isdir
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import List, Optional, TextIO, Union
+from typing import List, Optional, TextIO, Tuple, Union
 
 from rdkit import Chem  # type: ignore
 
+from molclub import calc, utils
+
+
+def get_xtb_energy(
+    mol: Chem.rdchem.Mol,
+    charge: int = 0,
+    num_unpaired_electrons: int = 0,
+) -> float:
+    xtb_result = job(
+        mol,
+        Parameters(),
+        charge=charge,
+        num_unpaired_electrons=num_unpaired_electrons,
+    )
+    return xtb_result.energy_kcal
+
+
+def optimize_xtb(
+    input_mol: Chem.rdchem.Mol,
+    charge: int = 0,
+    num_unpaired_electrons: int = 0,
+) -> Tuple[Chem.rdchem.Mol, float]:
+    xtb_result = job(
+        input_mol,
+        Parameters(),
+        job_type="opt",
+        charge=charge,
+        num_unpaired_electrons=num_unpaired_electrons,
+    )
+    mol = Chem.rdchem.Mol(input_mol, quickCopy=True)
+    mol.AddConformer(xtb_result.conf)
+    return mol, xtb_result.energy_kcal
+
 
 @dataclass(init=True, repr=True, slots=True)
-class Dipole:
-    x: float
-    y: float
-    z: float
-    total: float
-
-
-@dataclass(init=True, repr=True, slots=True)
-class Output:
-    cwd: Optional[str]
+class Result(calc.Result):
     energy_kcal: float = 0.0
     energy_hartree: float = 0.0
-    num_steps: int = 0
-    # traj_energies = List[float] = []
-    # traj_xyz: List[str] = ''
-    dipole: Union[None, Dipole] = None
+    conf: Optional[Chem.rdchem.Conformer] = None
+    dipole: Optional[calc.Dipole] = None
 
     def extract_results(
         self,
+        cwd: str,
         get_dipole: bool = True,
         get_quadrupole: bool = False,
         get_atomic_charges: bool = False,
     ) -> None:
         # TODO: write out stuff to extract quadrupole and atomic charges
-        with open(f"{self.cwd}/xtb.out") as xtb_out:
+        with open(f"{cwd}/xtb.out") as xtb_out:
             lines = xtb_out.readlines()
             for i, line in enumerate(lines):
                 if get_quadrupole or get_atomic_charges:
@@ -44,16 +67,21 @@ class Output:
                     self.energy_kcal = self.energy_hartree * 627.5
                 if "molecular dipole:" in line and get_dipole:
                     dipole_info = lines[i + 3].split()
-                    self.dipole = Dipole(
+                    self.dipole = calc.Dipole(
                         x=float(dipole_info[1]),
                         y=float(dipole_info[2]),
                         z=float(dipole_info[3]),
                         total=float(dipole_info[4]),
                     )
+        if exists(f"{cwd}/xtbopt.xyz"):
+            with open(f"{cwd}/xtbopt.xyz") as xtbopt_xyz:
+                xyz = xtbopt_xyz.read().split("\n")[2:]
+            xyz.remove("")
+            self.conf = utils.conf_from_xyz(xyz)
 
 
 @dataclass(init=True, repr=True, slots=True)
-class Parameters:
+class Parameters(calc.Parameters):
     method: str = "gfn2-xtb"
     scc_iters: int = 250
     solvation: str = "alpb"
@@ -116,7 +144,7 @@ def installed() -> bool:
 
 def run(
     xtb_args: List[str],
-    cwd: Optional[str],
+    cwd: str,
     xtb_out: Union[int, TextIO] = subprocess.PIPE,
 ) -> subprocess.CompletedProcess:
     proc = subprocess.run(
@@ -138,8 +166,8 @@ def job(
     charge: int = 0,
     num_unpaired_electrons: int = 0,
     use_temp_dir: bool = True,
-    working_dir: Union[None, str] = None,
-) -> Output:
+    working_dir: Optional[str] = None,
+) -> Result:
     if len(mol.GetConformers()) != 1:
         raise ValueError(
             "expected RDKit Mol with 1 conformer, got "
@@ -175,8 +203,8 @@ def job(
             Chem.MolToXYZFile(mol, f"{tmp}/input.xyz")
             with open(f"{tmp}/xtb.out", "w") as xtb_out:
                 run(xtb_args=xtb_args, cwd=tmp, xtb_out=xtb_out)
-            xtb_output = Output(cwd=tmp)
-            xtb_output.extract_results()
+            xtb_result = Result()
+            xtb_result.extract_results(cwd=tmp)
     else:
         assert isinstance(working_dir, str)
         if not isdir(working_dir):
@@ -189,7 +217,7 @@ def job(
                     cwd=working_dir,
                     xtb_out=xtb_out,
                 )
-            xtb_output = Output(cwd=working_dir)
-            xtb_output.extract_results()
+            xtb_result = Result()
+            xtb_result.extract_results(cwd=working_dir)
 
-    return xtb_output
+    return xtb_result
