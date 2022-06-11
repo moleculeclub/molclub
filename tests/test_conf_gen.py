@@ -8,7 +8,9 @@ methane = Chem.MolFromSmiles("C")
 
 
 def test_default_embed_params():
-    assert isinstance(conf_gen.default_embed_params(), rdDistGeom.EmbedParameters)
+    assert isinstance(
+        conf_gen.default_embed_params(), rdDistGeom.EmbedParameters
+    )  # format
 
 
 def test_rdkit_conf_gen():

@@ -4,18 +4,18 @@ from pytest import approx, raises
 from rdkit import Chem  # type: ignore
 from rdkit.Chem import rdMolAlign  # type: ignore
 
-from molclub import calc, conf, xtb
+from molclub import calc, conf_gen, xtb
 
 
 def test_get_xtb_energy():
     mol = Chem.MolFromSmiles("COC")
-    mol = conf.etkdg_conf_gen(mol)
+    mol = conf_gen.etkdg(mol)[0]
     assert xtb.get_xtb_energy(mol) == approx(-7143, 3)
 
 
 def test_optimize_xtb():
     mol = Chem.MolFromSmiles("COC")
-    mol = conf.etkdg_conf_gen(mol)
+    mol = conf_gen.etkdg(mol)[0]
     mol, energy = xtb.optimize_xtb(mol)
     assert energy == approx(-7147.597, 0.003)
 
@@ -80,7 +80,7 @@ def test_job():
     with raises(ValueError):
         xtb.job(Chem.MolFromSmiles("C"), xtb.Parameters())
     mol = Chem.MolFromSmiles("C")
-    mol = conf.etkdg_conf_gen(mol)
+    mol = conf_gen.etkdg(mol)[0]
     with raises(ValueError):
         xtb.job(mol, xtb.Parameters(), "meep")
     with raises(ValueError):
