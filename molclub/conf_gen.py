@@ -1,3 +1,4 @@
+import time
 from typing import List, Optional, Tuple, Union
 
 from rdkit import Chem  # type: ignore
@@ -15,14 +16,22 @@ def default_embed_params() -> rdDistGeom.EmbedParameters:
 
 def rdkit_conf_gen(
     mol: Chem.rdchem.Mol,
+    num_confs: Union[str, int] = "auto",
     prune_rms_thresh: float = 0.05,
     max_iters: int = 20,
     num_threads: int = 1,
 ) -> Tuple[List[Chem.rdchem.Mol], List[float]]:
-
-    mols = etkdg(mol, "auto", num_threads, prune_rms_thresh)
+    start = time.time()
+    mols = etkdg(mol, num_confs, prune_rms_thresh, num_threads)
+    step_1 = time.time()
     mols, _ = prune(mols, None, prune_rms_thresh)
+    step_2 = time.time()
     mols, energies = opt_mmff(mols, max_iters, num_threads)
+    end = time.time()
+    print(f"etkdg: {step_1 - start}")
+    print(f"prune: {step_2 - step_1}")
+    print(f"opt_mmff: {end - step_2}")
+    print(f"total: {end - start}")
 
     return mols, energies
 
@@ -30,8 +39,8 @@ def rdkit_conf_gen(
 def etkdg(
     mol: Chem.rdchem.Mol,
     num_confs: Union[str, int] = "auto",
-    num_threads: int = 1,
     prune_rms_thresh: float = 0.05,
+    num_threads: int = 1,
     embed_params: rdDistGeom.EmbedParameters = default_embed_params(),
 ) -> List[Chem.rdchem.Mol]:
     # input checking
