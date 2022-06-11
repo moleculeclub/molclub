@@ -1,3 +1,4 @@
+import warnings
 from tempfile import TemporaryFile
 
 from pytest import approx, raises
@@ -11,6 +12,11 @@ def test_get_xtb_energy():
     mol = Chem.MolFromSmiles("COC")
     mol = conf_gen.etkdg(mol)[0]
     assert xtb.get_xtb_energy(mol) == approx(-7143, 3)
+
+
+def test_order_conformers():
+    warnings.warn("TODO: write test")
+    pass
 
 
 def test_optimize_xtb():
