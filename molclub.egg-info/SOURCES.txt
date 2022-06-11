@@ -3,6 +3,11 @@ README.md
 pyproject.toml
 setup.cfg
 molclub/__init__.py
+molclub/calc.py
+molclub/conf.py
+molclub/crest.py
+molclub/utils.py
+molclub/xtb.py
 molclub.egg-info/PKG-INFO
 molclub.egg-info/SOURCES.txt
 molclub.egg-info/dependency_links.txt

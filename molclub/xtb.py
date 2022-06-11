@@ -26,7 +26,7 @@ def get_xtb_energy(
 
 def order_conformers(
     mols: List[Chem.rdchem.Mol],
-) -> List[Chem.rdchem.Mol]:
+) -> Tuple[List[Chem.rdchem.Mol], List[float]]:
     energies = []
     for mol in mols:
         energies.append(get_xtb_energy(mol))

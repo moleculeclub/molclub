@@ -2,11 +2,17 @@ dev-install:
 	pip install -r requirements_dev.txt
 	pip install -e .
 
-pre-commit:
+format_all:
 	mypy molclub tests
 	isort molclub tests
 	black molclub tests
 	flake8 molclub tests
+
+format:
+	mypy molclub
+	isort molclub
+	black molclub
+	flake8 molclub
 
 test:
 	pytest -v tests
