@@ -1,4 +1,3 @@
-import time
 from typing import List, Optional, Tuple, Union
 
 from rdkit import Chem  # type: ignore
@@ -7,6 +6,15 @@ from rdkit.Chem import rdDistGeom, rdMolAlign, rdMolDescriptors  # type: ignore
 
 
 def default_embed_params() -> rdDistGeom.EmbedParameters:
+    """
+    Returns an RDKit EmbedParameters object with the latest parameters.
+
+    Returns
+    -------
+    rdDistGeom.EmbedParameters
+        An RDKit EmbedParameters object that sets the parameters for the ETKDG
+        algorithm.
+    """
     params = rdDistGeom.ETKDGv3()
     params.forceTransAmides = False
     params.useSmallRingTorsions = True
@@ -16,22 +24,27 @@ def default_embed_params() -> rdDistGeom.EmbedParameters:
 
 def rdkit_conf_gen(
     mol: Chem.rdchem.Mol,
-    num_confs: Union[str, int] = "auto",
-    prune_rms_thresh: float = 0.05,
-    max_iters: int = 20,
     num_threads: int = 1,
 ) -> Tuple[List[Chem.rdchem.Mol], List[float]]:
-    start = time.time()
-    mols = etkdg(mol, num_confs, prune_rms_thresh, num_threads)
-    step_1 = time.time()
-    mols, _ = prune(mols, None, prune_rms_thresh)
-    step_2 = time.time()
-    mols, energies = opt_mmff(mols, max_iters, num_threads)
-    end = time.time()
-    print(f"etkdg: {step_1 - start}")
-    print(f"prune: {step_2 - step_1}")
-    print(f"opt_mmff: {end - step_2}")
-    print(f"total: {end - start}")
+    """
+    A default method for generating conformers using RDKit's ETKDG and MMFF
+    algorithms. Generates 100 ETKDG conformers and optimizes them with MMFF.
+
+    Parameters
+    ----------
+    mol: Chem.rdchem.Mol
+        Input RDKit Mol.
+    num_threads: int = 1,
+        The number of CPU threads to use.
+
+    Returns
+    -------
+    Tuple[List[Chem.rdchem.Mol], List[float]]
+        Returns a list of RDKit Mols and their corresponding energies in
+        kcal/mol.
+    """
+    mols = etkdg(mol, 100, 1, num_threads)
+    mols, energies = opt_mmff(mols, 50, num_threads)
 
     return mols, energies
 
@@ -43,6 +56,30 @@ def etkdg(
     num_threads: int = 1,
     embed_params: rdDistGeom.EmbedParameters = default_embed_params(),
 ) -> List[Chem.rdchem.Mol]:
+    """
+    Wrapper for RDKit's ETKDG (Experimental Torsion Knowledge Distance
+    Geometry) conformer generator.
+
+    Parameters
+    ----------
+    mol: Chem.rdchem.Mol
+        Input RDKit Mol.
+    num_confs: Union[str, int] = "auto"
+        User can either specify the number of conformers to be generated or use
+        "auto" to set num_confs based on the number of rotatable bonds.
+    prune_rms_thresh: float = 0.05
+        The RMSD cutoff to remove similar molecules.
+    num_threads: int = 1,
+        The number of CPU threads to use.
+    embed_params: rdDistGeom.EmbedParameters = default_embed_params(),
+        An RDKit EmbedParameters object that sets the parameters for the ETKDG
+        algorithm.
+
+    Returns
+    -------
+    List[Chem.rdchem.Mol]
+        List of mols with an embedded conformer.
+    """
     # input checking
     if isinstance(num_confs, str) and num_confs != "auto":
         raise ValueError(f'num_confs: expected int or "auto", got {num_confs}')
@@ -52,41 +89,23 @@ def etkdg(
 
     embed_params.numThreads = num_threads
     embed_params.pruneRmsThresh = prune_rms_thresh
-    # if not auto, create user-specified number of conformers
-    if num_confs != "auto":
-        rdDistGeom.EmbedMultipleConfs(
-            mol,
-            numConfs=num_confs,
-            params=embed_params,
-        )
-    # otherwise, generate number of conformers based on number of rotatable
-    #  bonds:
-    else:
+
+    if num_confs == "auto":
         n_rot_bonds = rdMolDescriptors.CalcNumRotatableBonds(mol)
         if n_rot_bonds <= 2:
-            rdDistGeom.EmbedMultipleConfs(
-                mol,
-                numConfs=100,
-                params=embed_params,
-            )
+            num_confs = 100
         elif n_rot_bonds > 2 and n_rot_bonds <= 6:
-            rdDistGeom.EmbedMultipleConfs(
-                mol,
-                numConfs=200,
-                params=embed_params,
-            )
+            num_confs = 200
         elif n_rot_bonds > 6 and n_rot_bonds <= 9:
-            rdDistGeom.EmbedMultipleConfs(
-                mol,
-                numConfs=300,
-                params=embed_params,
-            )
+            num_confs = 300
         elif n_rot_bonds > 9:
-            rdDistGeom.EmbedMultipleConfs(
-                mol,
-                numConfs=500,
-                params=embed_params,
-            )
+            num_confs = 500
+
+    rdDistGeom.EmbedMultipleConfs(
+        mol,
+        numConfs=num_confs,
+        params=embed_params,
+    )
 
     mols = []
     for conformer in mol.GetConformers():
@@ -102,9 +121,28 @@ def opt_mmff(
     max_iters: int = 20,
     num_threads: int = 1,
 ) -> Tuple[List[Chem.rdchem.Mol], List[float]]:
+    """
+    Wrapper for RDKit MMFF conformer optimizer.
+
+    Parameters
+    ----------
+    input_mols: List[Chem.rdchem.Mol]
+        List of RDKit Mols with embedded conformers.
+    max_iters: int = 20
+        Number of optimizations steps taken by the MMFF optimizer.
+    num_threads: int = 1,
+        The number of CPU threads to use.
+
+    Returns
+    -------
+    Tuple[List[Chem.rdchem.Mol], List[float]]
+        Returns a list of RDKit Mols and their corresponding energies in
+        kcal/mol.
+    """
     mol = Chem.rdchem.Mol(input_mols[0], quickCopy=True)
     for i_mol in input_mols:
         mol.AddConformer(i_mol.GetConformer(), assignId=True)
+
     mmff = AllChem.MMFFOptimizeMoleculeConfs(
         mol, maxIters=max_iters, numThreads=num_threads
     )
@@ -134,6 +172,18 @@ def prune(
     energies: Optional[List[float]] = None,
     prune_rms_thresh: float = 0.05,
 ) -> Tuple[List[Chem.rdchem.Mol], Optional[List[float]]]:
+    """
+    Removes duplicate Mols that have geometry RMSD < prune_rms_thresh.
+
+    Parameters
+    ----------
+    mols: List[Chem.rdchem.Mol]
+        List of RDKit Mols with embedded conformers.
+    energies: Optional[List[float]] = None
+        List of the corresponding energies in kcal/mol.
+    prune_rms_thresh: float = 0.05
+        The RMSD cutoff to remove similar molecules.
+    """
     mols_no_h = [Chem.RemoveHs(mol) for mol in mols]
 
     remove = [False] * len(mols)
