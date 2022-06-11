@@ -16,6 +16,24 @@ def get_xtb_energy(
     num_unpaired_electrons: int = 0,
     num_threads: int = 1,
 ) -> float:
+    """
+    Wrapper for xtb, a semi-empirical method similar to DFT tight-binding.
+    Default method for calculating molecular energies in kcal/mol.
+
+    Parameters
+    ----------
+    mol: Chem.rdchem.Mol
+        An RDKit Mol with embedded conformer.
+    num_unpaired_electrons: int = 0
+        Number of unpaired electrons, should be 0 unless working with radicals.
+    num_threads: int = 1
+        Number of CPU threads to use.
+
+    Returns
+    -------
+    float
+        Energy of molecule in kcal/mol.
+    """
     xtb_result = job(
         mol,
         Parameters(num_threads=num_threads),
@@ -30,6 +48,23 @@ def order_conformers(
     num_unpaired_electrons: int = 0,
     num_threads: int = 1,
 ) -> Tuple[List[Chem.rdchem.Mol], List[float]]:
+    """
+    Reorders the inputted mols according to their xtb energies.
+
+    Parameters
+    ----------
+    mols: List[Chem.rdchem.Mol]
+        List of RDKit Mols with embedded conformer.
+    num_unpaired_electrons: int = 0
+        Number of unpaired electrons, should be 0 unless working with radicals.
+    num_threads: int = 1
+        Number of CPU threads to use.
+
+    Returns
+    -------
+    Tuple[List[Chem.rdchem.Mol], List[float]]
+        List of RDKit Mols and of their corresponding energies in kcal/mol.
+    """
     energies = []
     for mol in mols:
         energies.append(
@@ -46,6 +81,24 @@ def optimize_xtb(
     num_unpaired_electrons: int = 0,
     num_threads: int = 1,
 ) -> Tuple[Chem.rdchem.Mol, float]:
+    """
+    Wrapper for xtb, a semi-empirical method similar to DFT tight-binding.
+    Default method for performing geometry optimizations.
+
+    Parameters
+    ----------
+    mol: Chem.rdchem.Mol
+        An RDKit Mol with embedded conformer.
+    num_unpaired_electrons: int = 0
+        Number of unpaired electrons, should be 0 unless working with radicals.
+    num_threads: int = 1
+        Number of CPU threads to use.
+
+    Returns
+    -------
+    Tuple[Chem.rdchem.Mol, float]
+        An RDKit Mol with embedded conformer and its energy in kcal/mol.
+    """
     xtb_result = job(
         input_mol,
         Parameters(num_threads=num_threads),
@@ -64,6 +117,20 @@ class Result(calc.Result):
     energy_hartree: float = 0.0
     conf: Optional[Chem.rdchem.Conformer] = None
     dipole: Optional[calc.Dipole] = None
+    """
+    Class for handling calculation results from xtb.
+
+    Attributes
+    ----------
+    energy_kcal: float = 0.0
+        The energy of the molecule in kcal/mol
+    energy_hartree: float = 0.0
+        The energy of the molecule in hartrees
+    conf: Optional[Chem.rdchem.Conformer] = None
+        The xyz geometry of the molecule as an RDKit Conformer.
+    dipole: Optional[calc.Dipole] = None
+        The dipole moments and total dipole of the molecule.
+    """
 
     def extract_results(
         self,
@@ -105,6 +172,28 @@ class Parameters(calc.Parameters):
     electrostatic_potential: bool = False
     orbitals: bool = False
     num_threads: int = 1
+    """
+    Class for managing the parameters for the xtb run.
+
+    Attributes
+    ----------
+    method: str = "gfn2-xtb"
+        The method used for energy calculation. The available methods are
+        semi-empirical (gfn#-xtb where # = 0, 1, 2) and force-field (gfnff).
+    scc_iters: int = 250
+        Number of iterations allowed for the self-consistent charge (xtb
+        version of the self-consistent field).
+    solvation: str = "alpb"
+        Solvation method, can be alpb or gbsa.
+    solvent: str = "water"
+        Solvent for solvation. See xtb docs for more information.
+    electrostatic_potential: bool = False
+        Parameter to calculate electrostatic potential.
+    orbitals: bool = False
+        Parameter to generate .molden orbital files.
+    num_threads: int = 1
+        Number of CPU threads to use.
+    """
 
     def __post_init__(self) -> None:
         if self.method not in ["gfn0-xtb", "gfn1-xtb", "gfn2-xtb", "gfnff"]:
@@ -163,6 +252,22 @@ def run(
     cwd: str,
     xtb_out: Union[int, TextIO] = subprocess.PIPE,
 ) -> subprocess.CompletedProcess:
+    """
+    Wrapper for running xtb through subprocess.run.
+
+    Parameters
+    ----------
+    xtb_args: List[str]
+        A list of arguments for xtb.
+    cwd: str
+        The directory to run the calculations in.
+    xtb_out: Union[int, TextIO] = subprocess.PIPE
+        Where to write the output from an xtb run. Can either be
+        subprocess.PIPE or an open file with write permission.
+
+    subprocess.CompletedProcess
+        Class containing information on the subprocess run.
+    """
     proc = subprocess.run(
         xtb_args,
         cwd=cwd,
@@ -184,11 +289,30 @@ def job(
     use_temp_dir: bool = True,
     working_dir: Optional[str] = None,
 ) -> Result:
-    if len(mol.GetConformers()) != 1:
-        raise ValueError(
-            "expected RDKit Mol with 1 conformer, got "
-            f"{len(mol.GetConformers())} conformers"
-        )
+    """
+    Wrapper for running an xtb job using user-set parameters on an RDKit Mol.
+
+    Parameters
+    ----------
+    mol: Chem.rdchem.Mol
+        An RDkit Mol with conformer.
+    params: Parameters
+        An object for managing the parameters for an xtb run.
+    job_type: str = "sp"
+        Job type, can be single point (sp), geometry optimization (opt), or
+        frequency (freq).
+    charge: int = 0
+        Charge of the molecule.
+    num_unpaired_electrons: int = 0
+        Number of unpaired electrons, should be 0 unless working with radicals.
+    use_temp_dir: bool = True
+        Flag to run calculations in a temporary directory. Must be False to set
+        a working directory.
+    working_dir: Optional[str] = None
+        Path to a working directory. use_temp_dir must be False to set a
+        working directory.
+    """
+    utils.mol_has_one_conf(mol)
     if job_type not in ["sp", "opt", "freq"]:
         raise ValueError(f"{job_type} not a valid job_type")
     if use_temp_dir and working_dir is not None:
