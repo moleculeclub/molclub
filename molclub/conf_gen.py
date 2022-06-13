@@ -43,7 +43,7 @@ def rdkit_conf_gen(
         Returns a list of RDKit Mols and their corresponding energies in
         kcal/mol.
     """
-    mols = etkdg(mol, 100, 1, num_threads)
+    mols = etkdg(mol, 100, num_threads=num_threads)
     mols, energies = opt_mmff(mols, 50, num_threads)
 
     return mols, energies
@@ -52,7 +52,7 @@ def rdkit_conf_gen(
 def etkdg(
     mol: Chem.rdchem.Mol,
     num_confs: Union[str, int] = "auto",
-    prune_rms_thresh: float = 0.05,
+    prune_rms_thresh: float = 0.125,
     num_threads: int = 1,
     embed_params: rdDistGeom.EmbedParameters = default_embed_params(),
 ) -> List[Chem.rdchem.Mol]:
@@ -170,7 +170,7 @@ def opt_xtb():
 def prune(
     mols: List[Chem.rdchem.Mol],
     energies: Optional[List[float]] = None,
-    prune_rms_thresh: float = 0.05,
+    prune_rms_thresh: float = 0.125,
 ) -> Tuple[List[Chem.rdchem.Mol], Optional[List[float]]]:
     """
     Removes duplicate Mols that have geometry RMSD < prune_rms_thresh.

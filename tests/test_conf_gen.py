@@ -14,11 +14,11 @@ def test_default_embed_params():
 def test_rdkit_conf_gen():
     mol_1 = Chem.MolFromSmiles("C=CC=CC=C")
     mols_1, _ = conf_gen.rdkit_conf_gen(mol_1)
-    assert len(mols_1) == 1
+    assert len(mols_1) in [7, 8]
 
     mol_2 = Chem.MolFromSmiles("OC(=O)C1=CC=CC=C1C1=CC=CC=N1")
     mols_2, _ = conf_gen.rdkit_conf_gen(mol_2)
-    assert len(mols_2) == 2
+    assert len(mols_2) in [8]
 
 
 def test_etkdg():

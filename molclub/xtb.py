@@ -210,14 +210,11 @@ class Parameters(calc.Parameters):
         }
         return method_dict[self.method]
 
-    def get_solvation(self) -> List[str]:
-        return [f"--{self.solvation}", self.solvent]
-
     def get_args(self) -> List[str]:
         args = []
         args += self.get_method()
         args += ["--iterations", str(self.scc_iters)]
-        args += self.get_solvation()
+        args += [f"--{self.solvation}", self.solvent]
         if self.electrostatic_potential:
             args += ["--esp"]
         if self.orbitals:
