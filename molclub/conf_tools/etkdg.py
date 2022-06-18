@@ -23,23 +23,23 @@ def default_embed_params() -> rdDistGeom.EmbedParameters:
 
 
 def rdkit_conf_gen(
-    mol: Chem.rdchem.Mol,
+    mol: Chem.Mol,
     num_threads: int = 1,
-) -> Tuple[List[Chem.rdchem.Mol], List[float]]:
+) -> Tuple[List[Chem.Mol], List[float]]:
     """
     A default method for generating conformers using RDKit's ETKDG and MMFF
     algorithms. Generates 100 ETKDG conformers and optimizes them with MMFF.
 
     Parameters
     ----------
-    mol: Chem.rdchem.Mol
+    mol: Chem.Mol
         Input RDKit Mol.
     num_threads: int = 1,
         The number of CPU threads to use.
 
     Returns
     -------
-    Tuple[List[Chem.rdchem.Mol], List[float]]
+    Tuple[List[Chem.Mol], List[float]]
         Returns a list of RDKit Mols and their corresponding energies in
         kcal/mol.
     """
@@ -50,19 +50,19 @@ def rdkit_conf_gen(
 
 
 def etkdg(
-    mol: Chem.rdchem.Mol,
+    mol: Chem.Mol,
     num_confs: Union[str, int] = "auto",
     prune_rms_thresh: float = 0.125,
     num_threads: int = 1,
     embed_params: rdDistGeom.EmbedParameters = default_embed_params(),
-) -> List[Chem.rdchem.Mol]:
+) -> List[Chem.Mol]:
     """
     Wrapper for RDKit's ETKDG (Experimental Torsion Knowledge Distance
     Geometry) conformer generator.
 
     Parameters
     ----------
-    mol: Chem.rdchem.Mol
+    mol: Chem.Mol
         Input RDKit Mol.
     num_confs: Union[str, int] = "auto"
         User can either specify the number of conformers to be generated or use
@@ -77,7 +77,7 @@ def etkdg(
 
     Returns
     -------
-    List[Chem.rdchem.Mol]
+    List[Chem.Mol]
         List of mols with an embedded conformer.
     """
     # input checking
@@ -109,7 +109,7 @@ def etkdg(
 
     mols = []
     for conformer in mol.GetConformers():
-        temp_mol = Chem.rdchem.Mol(mol, quickCopy=True)
+        temp_mol = Chem.Mol(mol, quickCopy=True)
         temp_mol.AddConformer(conformer, assignId=True)
         mols.append(temp_mol)
 
@@ -117,16 +117,16 @@ def etkdg(
 
 
 def opt_mmff(
-    input_mols: List[Chem.rdchem.Mol],
+    input_mols: List[Chem.Mol],
     max_iters: int = 20,
     num_threads: int = 1,
-) -> Tuple[List[Chem.rdchem.Mol], List[float]]:
+) -> Tuple[List[Chem.Mol], List[float]]:
     """
     Wrapper for RDKit MMFF conformer optimizer.
 
     Parameters
     ----------
-    input_mols: List[Chem.rdchem.Mol]
+    input_mols: List[Chem.Mol]
         List of RDKit Mols with embedded conformers.
     max_iters: int = 20
         Number of optimizations steps taken by the MMFF optimizer.
@@ -135,11 +135,11 @@ def opt_mmff(
 
     Returns
     -------
-    Tuple[List[Chem.rdchem.Mol], List[float]]
+    Tuple[List[Chem.Mol], List[float]]
         Returns a list of RDKit Mols and their corresponding energies in
         kcal/mol.
     """
-    mol = Chem.rdchem.Mol(input_mols[0], quickCopy=True)
+    mol = Chem.Mol(input_mols[0], quickCopy=True)
     for i_mol in input_mols:
         mol.AddConformer(i_mol.GetConformer(), assignId=True)
 
@@ -156,7 +156,7 @@ def opt_mmff(
 
     mols = []
     for conf in conformers:
-        temp_mol = Chem.rdchem.Mol(mol, quickCopy=True)
+        temp_mol = Chem.Mol(mol, quickCopy=True)
         temp_mol.AddConformer(conf, assignId=True)
         mols.append(temp_mol)
 
@@ -168,16 +168,16 @@ def opt_xtb():
 
 
 def prune(
-    mols: List[Chem.rdchem.Mol],
+    mols: List[Chem.Mol],
     energies: Optional[List[float]] = None,
     prune_rms_thresh: float = 0.125,
-) -> Tuple[List[Chem.rdchem.Mol], Optional[List[float]]]:
+) -> Tuple[List[Chem.Mol], Optional[List[float]]]:
     """
     Removes duplicate Mols that have geometry RMSD < prune_rms_thresh.
 
     Parameters
     ----------
-    mols: List[Chem.rdchem.Mol]
+    mols: List[Chem.Mol]
         List of RDKit Mols with embedded conformers.
     energies: Optional[List[float]] = None
         List of the corresponding energies in kcal/mol.

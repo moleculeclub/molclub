@@ -6,7 +6,7 @@ from typing import List, Optional, TextIO, Union
 
 from rdkit import Chem  # type: ignore
 
-from molclub import calc
+from molclub.compute import compute_utils
 
 
 def reopt_ensemble():
@@ -14,7 +14,7 @@ def reopt_ensemble():
 
 
 @dataclass(init=True, repr=True, slots=True)
-class Parameters(calc.Parameters):
+class Parameters(compute_utils.Parameters):
     method: str = "gfnff"
     search_intensity: str = "full"
     rmsd_thresh: float = 0.125
@@ -70,16 +70,18 @@ class Parameters(calc.Parameters):
         return method_dict[self.method]
 
     # def get_search_settings(self) -> List[str]:
-        # search_intensity_dict = {
-        #     "full": []
-        #     "fast":
-        #     "faster":
-        #     "fastest":
-        # }
+    # search_intensity_dict = {
+    #     "full": []
+    #     "fast":
+    #     "faster":
+    #     "fastest":
+    # }
 
     def get_args(self) -> List[str]:
         args = []
         args += self.get_method()
+
+        return args
 
 
 class crestError(Exception):
@@ -104,7 +106,7 @@ def run(
 
 
 def job(
-    mol: Chem.rdchem.Mol,
+    mol: Chem.Mol,
     params: Parameters,
     job_type: str = "mtd-gc",
     charge: int = 0,

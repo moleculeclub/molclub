@@ -4,119 +4,28 @@ from dataclasses import dataclass
 from os.path import exists, isdir
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import List, Optional, TextIO, Tuple, Union
+from typing import List, Optional, TextIO, Union
 
 from rdkit import Chem  # type: ignore
 
-from molclub import calc, utils
+from molclub.compute import compute_utils
+from molclub.conf_tools.conf_utils import conf_from_xyz, mol_has_one_conf
 
 
-def get_xtb_energy(
-    mol: Chem.rdchem.Mol,
-    num_unpaired_electrons: int = 0,
-    num_threads: int = 1,
-) -> float:
+class xtbError(Exception):
     """
-    Wrapper for xtb, a semi-empirical method similar to DFT tight-binding.
-    Default method for calculating molecular energies in kcal/mol.
-
-    Parameters
-    ----------
-    mol: Chem.rdchem.Mol
-        An RDKit Mol with embedded conformer.
-    num_unpaired_electrons: int = 0
-        Number of unpaired electrons, should be 0 unless working with radicals.
-    num_threads: int = 1
-        Number of CPU threads to use.
-
-    Returns
-    -------
-    float
-        Energy of molecule in kcal/mol.
+    An exception for handling failed xtb runs.
     """
-    xtb_result = job(
-        mol,
-        Parameters(num_threads=num_threads),
-        charge=Chem.GetFormalCharge(mol),
-        num_unpaired_electrons=num_unpaired_electrons,
-    )
-    return xtb_result.energy_kcal
 
-
-def order_conformers(
-    mols: List[Chem.rdchem.Mol],
-    num_unpaired_electrons: int = 0,
-    num_threads: int = 1,
-) -> Tuple[List[Chem.rdchem.Mol], List[float]]:
-    """
-    Reorders the inputted mols according to their xtb energies.
-
-    Parameters
-    ----------
-    mols: List[Chem.rdchem.Mol]
-        List of RDKit Mols with embedded conformer.
-    num_unpaired_electrons: int = 0
-        Number of unpaired electrons, should be 0 unless working with radicals.
-    num_threads: int = 1
-        Number of CPU threads to use.
-
-    Returns
-    -------
-    Tuple[List[Chem.rdchem.Mol], List[float]]
-        List of RDKit Mols and of their corresponding energies in kcal/mol.
-    """
-    energies = []
-    for mol in mols:
-        energies.append(
-            get_xtb_energy(mol, num_unpaired_electrons, num_threads)
-        )  # format
-
-    energies, mols = zip(*sorted(zip(energies, mols)))
-
-    return mols, energies
-
-
-def optimize_xtb(
-    input_mol: Chem.rdchem.Mol,
-    num_unpaired_electrons: int = 0,
-    num_threads: int = 1,
-) -> Tuple[Chem.rdchem.Mol, float]:
-    """
-    Wrapper for xtb, a semi-empirical method similar to DFT tight-binding.
-    Default method for performing geometry optimizations.
-
-    Parameters
-    ----------
-    mol: Chem.rdchem.Mol
-        An RDKit Mol with embedded conformer.
-    num_unpaired_electrons: int = 0
-        Number of unpaired electrons, should be 0 unless working with radicals.
-    num_threads: int = 1
-        Number of CPU threads to use.
-
-    Returns
-    -------
-    Tuple[Chem.rdchem.Mol, float]
-        An RDKit Mol with embedded conformer and its energy in kcal/mol.
-    """
-    xtb_result = job(
-        input_mol,
-        Parameters(num_threads=num_threads),
-        job_type="opt",
-        charge=Chem.GetFormalCharge(input_mol),
-        num_unpaired_electrons=num_unpaired_electrons,
-    )
-    mol = Chem.rdchem.Mol(input_mol, quickCopy=True)
-    mol.AddConformer(xtb_result.conf)
-    return mol, xtb_result.energy_kcal
+    pass
 
 
 @dataclass(init=True, repr=True, slots=True)
-class Result(calc.Result):
+class Result(compute_utils.Result):
     energy_kcal: float = 0.0
     energy_hartree: float = 0.0
     conf: Optional[Chem.rdchem.Conformer] = None
-    dipole: Optional[calc.Dipole] = None
+    dipole: Optional[compute_utils.Dipole] = None
     """
     Class for handling calculation results from xtb.
 
@@ -150,7 +59,7 @@ class Result(calc.Result):
                     self.energy_kcal = self.energy_hartree * 627.5
                 if "molecular dipole:" in line and get_dipole:
                     dipole_info = lines[i + 3].split()
-                    self.dipole = calc.Dipole(
+                    self.dipole = compute_utils.Dipole(
                         x=float(dipole_info[1]),
                         y=float(dipole_info[2]),
                         z=float(dipole_info[3]),
@@ -160,13 +69,14 @@ class Result(calc.Result):
             with open(f"{cwd}/xtbopt.xyz") as xtbopt_xyz:
                 xyz = xtbopt_xyz.read().split("\n")[2:]
             xyz.remove("")
-            self.conf = utils.conf_from_xyz(xyz)
+            self.conf = conf_from_xyz(xyz)
 
 
 @dataclass(init=True, repr=True, slots=True)
-class Parameters(calc.Parameters):
+class Parameters(compute_utils.Parameters):
     method: str = "gfn2-xtb"
     scc_iters: int = 250
+    geom_iters: int = 0
     solvation: str = "alpb"
     solvent: str = "water"
     electrostatic_potential: bool = False
@@ -214,6 +124,8 @@ class Parameters(calc.Parameters):
         args = []
         args += self.get_method()
         args += ["--iterations", str(self.scc_iters)]
+        if self.geom_iters > 0:
+            args += ["--cycles", str(self.geom_iters)]
         args += [f"--{self.solvation}", self.solvent]
         if self.electrostatic_potential:
             args += ["--esp"]
@@ -224,61 +136,8 @@ class Parameters(calc.Parameters):
         return args
 
 
-class xtbError(Exception):
-    """
-    An exception for handling failed xtb runs.
-    """
-
-    pass
-
-
-def installed() -> bool:
-    """
-    Check if xtb is installed.
-    """
-    proc = subprocess.run(
-        ["xtb", "--version"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-    )
-    return proc.returncode == 0
-
-
-def run(
-    xtb_args: List[str],
-    cwd: str,
-    xtb_out: Union[int, TextIO] = subprocess.PIPE,
-) -> subprocess.CompletedProcess:
-    """
-    Wrapper for running xtb through subprocess.run.
-
-    Parameters
-    ----------
-    xtb_args: List[str]
-        A list of arguments for xtb.
-    cwd: str
-        The directory to run the calculations in.
-    xtb_out: Union[int, TextIO] = subprocess.PIPE
-        Where to write the output from an xtb run. Can either be
-        subprocess.PIPE or an open file with write permission.
-
-    subprocess.CompletedProcess
-        Class containing information on the subprocess run.
-    """
-    proc = subprocess.run(
-        xtb_args,
-        cwd=cwd,
-        stdout=xtb_out,
-        stderr=subprocess.PIPE,
-    )
-    if proc.returncode != 0:
-        raise xtbError(proc.stderr.decode())
-
-    return proc
-
-
 def job(
-    mol: Chem.rdchem.Mol,
+    mol: Chem.Mol,
     params: Parameters,
     job_type: str = "sp",
     charge: int = 0,
@@ -291,7 +150,7 @@ def job(
 
     Parameters
     ----------
-    mol: Chem.rdchem.Mol
+    mol: Chem.Mol
         An RDkit Mol with conformer.
     params: Parameters
         An object for managing the parameters for an xtb run.
@@ -309,7 +168,7 @@ def job(
         Path to a working directory. use_temp_dir must be False to set a
         working directory.
     """
-    utils.mol_has_one_conf(mol)
+    mol_has_one_conf(mol)
     if job_type not in ["sp", "opt", "freq"]:
         raise ValueError(f"{job_type} not a valid job_type")
     if use_temp_dir and working_dir is not None:
@@ -358,3 +217,36 @@ def job(
             xtb_result.extract_results(cwd=working_dir)
 
     return xtb_result
+
+
+def run(
+    xtb_args: List[str],
+    cwd: str,
+    xtb_out: Union[int, TextIO] = subprocess.PIPE,
+) -> subprocess.CompletedProcess:
+    """
+    Wrapper for running xtb through subprocess.run.
+
+    Parameters
+    ----------
+    xtb_args: List[str]
+        A list of arguments for xtb.
+    cwd: str
+        The directory to run the calculations in.
+    xtb_out: Union[int, TextIO] = subprocess.PIPE
+        Where to write the output from an xtb run. Can either be
+        subprocess.PIPE or an open file with write permission.
+
+    subprocess.CompletedProcess
+        Class containing information on the subprocess run.
+    """
+    proc = subprocess.run(
+        xtb_args,
+        cwd=cwd,
+        stdout=xtb_out,
+        stderr=subprocess.PIPE,
+    )
+    if proc.returncode != 0:
+        raise xtbError(proc.stderr.decode())
+
+    return proc
