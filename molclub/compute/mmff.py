@@ -3,7 +3,7 @@ from typing import List, Tuple
 from rdkit import Chem  # type: ignore
 from rdkit.Chem import rdForceFieldHelpers  # type: ignore
 
-from molclub.conf_tools import conf_utils
+from molclub.conf_tools.conf_utils import mol_has_one_conf
 
 """
 General notes on using RDKit's MMFF:
@@ -18,7 +18,7 @@ def sp(
     mol: Chem.Mol,
     num_threads: int = 1,
 ) -> float:
-    conf_utils.mol_has_one_conf(mol)
+    mol_has_one_conf(mol)
     mmff = rdForceFieldHelpers.MMFFOptimizeMoleculeConfs(
         mol, maxIters=0, numThreads=num_threads
     )
@@ -30,7 +30,7 @@ def opt(
     max_iters: int = 200,
     num_threads: int = 1,
 ) -> Tuple[Chem.Mol, float]:
-    conf_utils.mol_has_one_conf(mol)
+    mol_has_one_conf(mol)
     mmff = rdForceFieldHelpers.MMFFOptimizeMoleculeConfs(
         mol, maxIters=max_iters, numThreads=num_threads
     )
@@ -42,7 +42,7 @@ def opt_traj(
     max_iters: int = 200,
     num_threads: int = 1,
 ) -> Tuple[List[int], List[float]]:
-    conf_utils.mol_has_one_conf(mol)
+    mol_has_one_conf(mol)
     energies = [sp(mol)]
     for _ in range(max_iters):
         mmff = rdForceFieldHelpers.MMFFOptimizeMoleculeConfs(

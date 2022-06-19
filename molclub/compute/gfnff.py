@@ -37,10 +37,11 @@ def opt(
 
 
 def opt_traj(
-    mol: Chem.Mol,
+    input_mol: Chem.Mol,
     max_iters: int = 200,
     num_threads: int = 1,
 ) -> Tuple[List[int], List[float]]:
+    mol = Chem.Mol(input_mol)
     conf_utils.mol_has_one_conf(mol)
     energies = [sp(mol)]
     for _ in range(max_iters):

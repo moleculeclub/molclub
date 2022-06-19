@@ -8,7 +8,7 @@ from typing import List, Optional, TextIO, Union
 
 from rdkit import Chem  # type: ignore
 
-from molclub.compute import compute_utils
+from molclub import compute
 from molclub.conf_tools.conf_utils import conf_from_xyz, mol_has_one_conf
 
 
@@ -21,11 +21,11 @@ class xtbError(Exception):
 
 
 @dataclass(init=True, repr=True, slots=True)
-class Result(compute_utils.Result):
+class Result(compute.Result):
     energy_kcal: float = 0.0
     energy_hartree: float = 0.0
     conf: Optional[Chem.rdchem.Conformer] = None
-    dipole: Optional[compute_utils.Dipole] = None
+    dipole: Optional[compute.Dipole] = None
     """
     Class for handling calculation results from xtb.
 
@@ -59,7 +59,7 @@ class Result(compute_utils.Result):
                     self.energy_kcal = self.energy_hartree * 627.5
                 if "molecular dipole:" in line and get_dipole:
                     dipole_info = lines[i + 3].split()
-                    self.dipole = compute_utils.Dipole(
+                    self.dipole = compute.Dipole(
                         x=float(dipole_info[1]),
                         y=float(dipole_info[2]),
                         z=float(dipole_info[3]),
@@ -73,7 +73,7 @@ class Result(compute_utils.Result):
 
 
 @dataclass(init=True, repr=True, slots=True)
-class Parameters(compute_utils.Parameters):
+class Parameters(compute.Parameters):
     method: str = "gfn2-xtb"
     scc_iters: int = 250
     geom_iters: int = 0
