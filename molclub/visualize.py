@@ -1,10 +1,12 @@
 from typing import List
+from random import choice
 
 from rdkit import Chem  # type: ignore
 import py3Dmol  # type: ignore
 
 
 py3dmol_colors = [
+    'lightgray',
     'hotpink',
     'salmon',
     'orange',
@@ -37,15 +39,12 @@ def mol(
         The input RDKit mol object with an embedded 3D conformer.
     nonpolar_h: `bool`, default = False
         Whether or not to show nonpolar (C-H) hydrogens"""
-    from random import choice
-
-    mol_block = Chem.rdmolfiles.MolToMolBlock(mol, includeStereo=True)
     if carbon_color == 'random':
         carbon_color = choice(py3dmol_colors)
     elif carbon_color in py3dmol_colors:
         pass
-    else:
-        raise ValueError(f'{carbon_color} is not a valid color')
+    # else:
+    #     raise ValueError(f'{carbon_color} is not a valid color')
     # view = py3Dmol.view(
     #     data=mol_block,
     #     width=400,
@@ -59,6 +58,7 @@ def mol(
     # )
     view = py3Dmol.view(width=400, height=300)
     view.removeAllModels()
+    mol_block = Chem.rdmolfiles.MolToMolBlock(mol, includeStereo=True)
     view.addModel(mol_block)
     model = view.getModel()
     model.setStyle({'stick': {
@@ -67,7 +67,8 @@ def mol(
     }})
     if dark_mode:
         outline_color = carbon_color
-        background_color = '#111111'
+        # background_color = '#111111'
+        background_color = 'black'
     else:
         outline_color = 'black'
         background_color = 'white'
@@ -79,8 +80,31 @@ def mol(
 
 def mols(
     mols: List[Chem.Mol],
+    dark_mode=True,
 ) -> None:
-    pass
+    view = py3Dmol.view(width=400, height=300)
+    view.removeAllModels()
+
+    for i, mol in enumerate(mols):
+        mol_block = Chem.rdmolfiles.MolToMolBlock(mol, includeStereo=True)
+        view.addModel(mol_block)
+        model = view.getModel()
+        model.setStyle({'stick': {
+            'colorscheme': f'{py3dmol_colors[i % len(py3dmol_colors)]}Carbon',
+            'radius': 0.25,
+        }})
+
+    if dark_mode:
+        outline_color = 'white'
+        # background_color = '#111111'
+        background_color = 'black'
+    else:
+        outline_color = 'black'
+        background_color = 'white'
+    view.setViewStyle({'style':'outline','color':outline_color,'width':0.04})
+    view.setBackgroundColor(background_color)
+    view.zoomTo()
+    view.show()
 
 
 # view = py3Dmol.view()

@@ -21,6 +21,15 @@ def order_confs(
 
     return mols, energies
 
+def align_confs(
+    mols,
+    ref_mol,
+):
+    rmsd = [0.0]
+    for mol in mols:
+        rmsd.append(rdMolAlign.GetBestRMS(mol, ref_mol))
+    return rmsd
+
 
 def prune(
     mols: List[Chem.Mol],
@@ -47,7 +56,12 @@ def prune(
             for j, other_mol in enumerate(mols_no_h[i + 1 :]):  # noqa: E203
                 rms = rdMolAlign.GetBestRMS(other_mol, mol_no_h)
                 if rms < prune_rms_thresh:
-                    remove[i + 1 + j] = True
+                    # you may wonder why this 1 is here
+                    # the j is 0-indexed from the slice [1:]
+                    # so we will compare i=o, j=0
+                    # however if i=0,j=0 has low RMS, we will set
+                    #  remove[0] = True when remove[1] should be True
+                    remove[i + j + 1] = True
 
     if energies is None:
         for i in reversed(range(len(remove))):
@@ -62,7 +76,7 @@ def prune(
     return mols, energies
 
 
-def boltzmann_pop(energies: List[float]):
+def boltzmann_pop(energies: List[float], threshold: float = 0.05):
     min_e = min(energies)
     rel_energies = [energy - min_e for energy in energies]
 
@@ -70,10 +84,10 @@ def boltzmann_pop(energies: List[float]):
     ratios = []
     for energy in rel_energies:
         ratio = boltzmann_ratio(energy)
-        if total_pop == 0.0 or ratio/total_pop >= 0.05:
+        if total_pop == 0.0 or ratio/total_pop >= threshold:
             total_pop += ratio
             ratios.append(ratio)
-        if ratio/total_pop < 0.05:
+        if ratio/total_pop < threshold:
             break
 
     return [ratio/total_pop for ratio in ratios]
