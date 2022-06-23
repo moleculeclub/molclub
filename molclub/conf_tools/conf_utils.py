@@ -23,11 +23,10 @@ def order_confs(
 
 def align_confs(
     mols,
-    ref_mol,
 ):
     rmsd = [0.0]
-    for mol in mols:
-        rmsd.append(rdMolAlign.GetBestRMS(mol, ref_mol))
+    for mol in mols[1:]:
+        rmsd.append(rdMolAlign.GetBestRMS(mol, mols[0]))
     return rmsd
 
 
