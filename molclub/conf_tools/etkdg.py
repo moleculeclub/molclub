@@ -83,12 +83,12 @@ def generate_conformers(
     )
 
     mols = []
-    for conformer in mol.GetConformers():
+    for conf in mol.GetConformers():
         temp_mol = Chem.Mol(mol, quickCopy=True)
-        temp_mol.AddConformer(conformer, assignId=True)
+        temp_mol.AddConformer(conf, assignId=True)
         mols.append(temp_mol)
 
-    mols, energies = order_confs(mols, mmff.sp, num_threads=num_threads)
+    mols, energies = order_confs(mols, sp_method=mmff.sp, num_threads=num_threads)
     mols, energies = prune(mols, energies, prune_rms_thresh=prune_rms_thresh)
 
     return mols
