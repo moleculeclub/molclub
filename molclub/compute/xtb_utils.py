@@ -24,7 +24,7 @@ class xtbError(Exception):
 class Result(compute.Result):
     energy_kcal: float = 0.0
     energy_hartree: float = 0.0
-    conf: Optional[Chem.rdchem.Conformer] = None
+    conf: Optional[Chem.Conformer] = None
     dipole: Optional[compute.Dipole] = None
     """
     Class for handling calculation results from xtb.
@@ -35,7 +35,7 @@ class Result(compute.Result):
         The energy of the molecule in kcal/mol
     energy_hartree: float = 0.0
         The energy of the molecule in hartrees
-    conf: Optional[Chem.rdchem.Conformer] = None
+    conf: Optional[Chem.Conformer] = None
         The xyz geometry of the molecule as an RDKit Conformer.
     dipole: Optional[calc.Dipole] = None
         The dipole moments and total dipole of the molecule.
