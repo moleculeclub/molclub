@@ -5,13 +5,13 @@ dev-install:
 format_all:
 	mypy molclub tests
 	isort molclub tests
-	black molclub tests
-	flake8 molclub tests
+	black --line-length 79 molclub tests
+	flake8  molclub tests
 
 format:
 	mypy molclub
 	isort molclub
-	black molclub
+	black --line-length 79 molclub
 	flake8 molclub
 
 test:
