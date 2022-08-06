@@ -88,7 +88,9 @@ def generate_conformers(
         temp_mol.AddConformer(conf, assignId=True)
         mols.append(temp_mol)
 
-    mols, energies = order_confs(mols, sp_method=mmff.sp, num_threads=num_threads)
+    mols, energies = order_confs(
+        mols, sp_method=mmff.sp, num_threads=num_threads
+    )
     mols, energies = prune(mols, energies, prune_rms_thresh=prune_rms_thresh)
 
     return mols

@@ -1,8 +1,8 @@
 import subprocess
-from dataclasses import dataclass
-from tempfile import TemporaryDirectory
+from dataclasses import dataclass, field
+from os.path import isdir
 from pathlib import Path
-from os.path import exists, isdir
+from tempfile import TemporaryDirectory
 
 # import tempfile
 from typing import List, Optional, TextIO, Union
@@ -11,19 +11,22 @@ from rdkit import Chem  # type: ignore
 
 from molclub.compute import compute_utils
 from molclub.conf_tools.conf_utils import (
-    mol_has_one_conf, conf_from_xyz, order_confs, prune
-)  # format
+    conf_from_xyz,
+    mol_has_one_conf,
+    order_confs,
+    prune,
+)
 
 
 def reopt_ensemble():
     pass
-    
+
 
 @dataclass(init=True, repr=True, slots=True)
 class Result(compute_utils.Result):
-    energies_kcal: List[float]
-    energies_hartree: List[float]
-    confs: List[Chem.Conformer]
+    energies_kcal: List[float] = field(default_factory=list)
+    energies_hartree: List[float] = field(default_factory=list)
+    confs: List[Chem.Conformer] = field(default_factory=list)
 
     def extract_results(
         self,
@@ -31,24 +34,22 @@ class Result(compute_utils.Result):
     ) -> None:
         # with open(f'{cwd}/crest.out') as crest_out:
         xyz_blocks = []
-        with open(f'{cwd}/crest_conformers.xyz') as confs:
+        with open(f"{cwd}/crest_conformers.xyz") as confs:
             lines = confs.readlines()
-            num_atoms = int(lines[0].strip('\n'))
+            num_atoms = int(lines[0].strip("\n"))
             lines_per_entry = num_atoms + 2
-            xyz_block = ''
+            xyz_block = ""
             for i in range(0, len(lines)):
                 xyz_block += lines[i]
                 if (i + 1) % lines_per_entry == 0:
                     xyz_blocks.append(xyz_block)
-                    xyz_block = ''
+                    xyz_block = ""
 
-        self.energies_hartree = []        
-        self.confs = []
         for xyz_block in xyz_blocks:
-            xyz_block = xyz_block.split('\n')
-            self.energies_hartree.append(float(xyz_block[1]))
-            xyz = xyz_block[2:]
-            xyz.remove('')
+            xyz_list = xyz_block.split("\n")
+            self.energies_hartree.append(float(xyz_list[1]))
+            xyz = xyz_list[2:]
+            xyz.remove("")
             self.confs.append(conf_from_xyz(xyz))
         self.energies_kcal = [e * 627.5 for e in self.energies_hartree]
 
@@ -84,7 +85,7 @@ class Parameters(compute_utils.Parameters):
         ]:
             raise ValueError(
                 f"{self.search_intensity} not a valid search setting"
-            )  # format
+            )
         if self.solvation not in ["alpb", "gbsa"]:
             raise ValueError(f"{self.solvation} not a valid solvation method")
         # if self.opt_tightness not in [
@@ -101,7 +102,7 @@ class Parameters(compute_utils.Parameters):
         # if self.prop not in [None, "hess", "reopt", "autoIR"]:
         #     raise ValueError(f"{self.prop} not a valid property calculation")
         if self.protonate and self.deprotonate:
-            raise ValueError('both protonate and deprotonate cannot be True')
+            raise ValueError("both protonate and deprotonate cannot be True")
 
     # def get_use_cregen(self) -> List[str]:
     #     if self.use_cregen:
@@ -118,9 +119,9 @@ class Parameters(compute_utils.Parameters):
 
     def get_search_settings(self) -> List[str]:
         search_intensity_dict = {
-            "fast": ['--quick'],
-            "faster": ['--squick'],
-            "fastest": ['--mquick'],
+            "fast": ["--quick"],
+            "faster": ["--squick"],
+            "fastest": ["--mquick"],
         }
 
         return search_intensity_dict[self.search_intensity]
@@ -130,18 +131,18 @@ class Parameters(compute_utils.Parameters):
         # if self.use_cregen:
         #     args += ['--cregen']
         args += self.get_method()
-        if self.search_intensity != 'full':
+        if self.search_intensity != "full":
             args += self.get_search_settings()
         args += [f"--{self.solvation}", self.solvent]
         # args += ['--mrest', str(self.num_mtd_cycle)]
         if self.protonate:
-            args += ['--protonate']
+            args += ["--protonate"]
         if self.deprotonate:
-            args += ['--deprotonate']
+            args += ["--deprotonate"]
         if self.tautomerize:
-            args += ['--tautomerize']
-        args += ['--iter', str(self.taut_iter)]
-        args += ['--T', str(self.num_threads)]
+            args += ["--tautomerize"]
+        args += ["--iter", str(self.taut_iter)]
+        args += ["--T", str(self.num_threads)]
 
         return args
 
@@ -189,13 +190,13 @@ def job(
     if working_dir is not None:
         if working_dir.startswith("~"):
             working_dir = f"{str(Path.home())}/{working_dir[2:]}"
-    
+
     crest_args = [
-        'crest',
-        'input.xyz',
-        '--chrg',
+        "crest",
+        "input.xyz",
+        "--chrg",
         str(charge),
-        '--uhf',
+        "--uhf",
         str(num_unpaired_electrons),
     ]
     crest_args += params.get_args()
@@ -203,9 +204,9 @@ def job(
     if use_temp_dir:
         with TemporaryDirectory() as tmp:
             Chem.MolToXYZFile(mol, f"{tmp}/input.xyz")
-            with open(f"{tmp}/crest.out", 'w') as crest_out:
+            with open(f"{tmp}/crest.out", "w") as crest_out:
                 run(crest_args=crest_args, cwd=tmp, crest_out=crest_out)
-            crest_result = Result(False, False, False)
+            crest_result = Result()
             crest_result.extract_results(cwd=tmp)
     else:
         assert isinstance(working_dir, str)
@@ -213,15 +214,15 @@ def job(
             raise NotADirectoryError(f"{working_dir} is not a directory")
         else:
             Chem.MolToXYZFile(mol, f"{working_dir}/input.xyz")
-            with open(f"{working_dir}/crest.out", 'w') as crest_out:
+            with open(f"{working_dir}/crest.out", "w") as crest_out:
                 run(
                     crest_args=crest_args,
                     cwd=working_dir,
                     crest_out=crest_out,
                 )
-            crest_result = Result(False, False, False)
+            crest_result = Result()
             crest_result.extract_results(cwd=working_dir)
-    
+
     return crest_result
 
 

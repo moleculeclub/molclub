@@ -28,7 +28,7 @@ def opt(
         mol,
         Parameters(
             method="gfnff", geom_iters=max_iters, num_threads=num_threads
-        ),  # format
+        ),
         job_type="opt",
     )
     mol.RemoveAllConformers()

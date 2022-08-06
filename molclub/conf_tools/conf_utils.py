@@ -1,4 +1,4 @@
-from typing import Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 import pandas as pd  # type: ignore
@@ -17,7 +17,9 @@ def order_confs(
         energies = []
         for mol in mols:
             energies.append(sp_method(mol, **kwargs))
-    energies, mols = zip(*sorted(zip(energies, mols)))
+    energies, mols = zip(
+        *sorted(zip(energies, mols), key=lambda pair: pair[0])
+    )
     mols = list(mols)
     energies = list(energies)
 
@@ -32,12 +34,12 @@ def align_confs(
         rmsd.append(rdMolAlign.GetBestRMS(mol, mols[0]))
     return rmsd
 
+
 def prune(
     mols: List[Chem.Mol],
     energies: Optional[List[float]] = None,
     prune_rms_thresh: float = 0.125,
 ) -> Tuple[List[Chem.Mol], Optional[List[float]]]:
-
     def prune_once(
         mols: List[Chem.Mol],
         energies: Optional[List[float]] = None,
@@ -60,7 +62,9 @@ def prune(
         remove = [False] * len(mols)
         for i, mol_no_h in enumerate(mols_no_h):
             if remove[i] is False:
-                for j, other_mol in enumerate(mols_no_h[i + 1 :]):  # noqa: E203
+                for j, other_mol in enumerate(
+                    mols_no_h[i + 1 :]  # noqa: E203
+                ):  # noqa: E203
                     rms = rdMolAlign.GetBestRMS(other_mol, mol_no_h)
                     if rms < prune_rms_thresh:
                         # you may wonder why this 1 is here
@@ -74,7 +78,7 @@ def prune(
             for i in reversed(range(len(remove))):
                 if remove[i]:
                     mols.pop(i)
-            return mols
+            return mols, None
         else:
             for i in reversed(range(len(remove))):
                 if remove[i]:
@@ -89,7 +93,7 @@ def prune(
         old_len = new_len
         mols, energies = prune_once(mols, energies, prune_rms_thresh)
         new_len = len(mols)
-    
+
     return mols, energies
 
 
@@ -115,7 +119,7 @@ def boltzmann_pop(energies: List[float], threshold: float = 0.05):
 
 def rmsd_matrix(mols: List[Chem.Mol]):
     mols_no_h = [Chem.RemoveHs(mol) for mol in mols]
-    rms_matrix = np.ndarray((len(mols_no_h), len(mols_no_h)))
+    rms_matrix: np.ndarray = np.ndarray((len(mols_no_h), len(mols_no_h)))
     rms_matrix.fill(-1)
     for i, mol_1 in enumerate(mols_no_h):
         for j, mol_2 in enumerate(mols_no_h):

@@ -13,9 +13,6 @@ class Result(ABC):
     def extract_results(
         self,
         cwd: str,
-        get_dipole: bool = True,
-        get_quadrupole: bool = False,
-        get_atomic_charges: bool = False,
     ) -> None:
         pass
 

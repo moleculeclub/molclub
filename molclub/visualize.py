@@ -1,28 +1,27 @@
-from typing import List
 from random import choice
+from typing import List
 
-from rdkit import Chem  # type: ignore
 import py3Dmol  # type: ignore
-
+from rdkit import Chem  # type: ignore
 
 py3dmol_colors = [
-    'lightgray',
-    'hotpink',
-    'salmon',
-    'orange',
-    'yellow',
-    'greenyellow',
-    'aquamarine',
-    'cyan',
-    'lightskyblue',
-    'violet',
-    'magenta',
+    "lightgray",
+    "hotpink",
+    "salmon",
+    "orange",
+    "yellow",
+    "greenyellow",
+    "aquamarine",
+    "cyan",
+    "lightskyblue",
+    "violet",
+    "magenta",
 ]
 
 
 def mol(
     mol: Chem.rdchem.Mol,
-    carbon_color: str = 'random',
+    carbon_color: str = "random",
     dark_mode=True,
 ) -> None:
     """Use py3Dmol to visualize mol in 3D.
@@ -39,7 +38,7 @@ def mol(
         The input RDKit mol object with an embedded 3D conformer.
     nonpolar_h: `bool`, default = False
         Whether or not to show nonpolar (C-H) hydrogens"""
-    if carbon_color == 'random':
+    if carbon_color == "random":
         carbon_color = choice(py3dmol_colors)
     elif carbon_color in py3dmol_colors:
         pass
@@ -61,18 +60,24 @@ def mol(
     mol_block = Chem.rdmolfiles.MolToMolBlock(mol, includeStereo=True)
     view.addModel(mol_block)
     model = view.getModel()
-    model.setStyle({'stick': {
-        'colorscheme': f'{carbon_color}Carbon',
-        'radius': 0.25,
-    }})
+    model.setStyle(
+        {
+            "stick": {
+                "colorscheme": f"{carbon_color}Carbon",
+                "radius": 0.25,
+            }
+        }
+    )
     if dark_mode:
         outline_color = carbon_color
         # background_color = '#111111'
-        background_color = 'black'
+        background_color = "black"
     else:
-        outline_color = 'black'
-        background_color = 'white'
-    view.setViewStyle({'style':'outline','color':outline_color,'width':0.04})
+        outline_color = "black"
+        background_color = "white"
+    view.setViewStyle(
+        {"style": "outline", "color": outline_color, "width": 0.04}
+    )
     view.setBackgroundColor(background_color)
     view.zoomTo()
     view.show()
@@ -89,37 +94,26 @@ def mols(
         mol_block = Chem.rdmolfiles.MolToMolBlock(mol, includeStereo=True)
         view.addModel(mol_block)
         model = view.getModel()
-        model.setStyle({'stick': {
-            'colorscheme': f'{py3dmol_colors[i % len(py3dmol_colors)]}Carbon',
-            'radius': 0.25,
-        }})
+        colorscheme = f"{py3dmol_colors[i % len(py3dmol_colors)]}Carbon"
+        model.setStyle(
+            {
+                "stick": {
+                    "colorscheme": colorscheme,
+                    "radius": 0.25,
+                }
+            }
+        )
 
     if dark_mode:
-        outline_color = 'white'
+        outline_color = "white"
         # background_color = '#111111'
-        background_color = 'black'
+        background_color = "black"
     else:
-        outline_color = 'black'
-        background_color = 'white'
-    view.setViewStyle({'style':'outline','color':outline_color,'width':0.04})
+        outline_color = "black"
+        background_color = "white"
+    view.setViewStyle(
+        {"style": "outline", "color": outline_color, "width": 0.04}
+    )
     view.setBackgroundColor(background_color)
     view.zoomTo()
     view.show()
-
-
-# view = py3Dmol.view()
-# view.removeAllModels()
-# view.setViewStyle({'style':'outline','color':'black','width':0.1})
-
-# view.addModel(open('1AZ8_clean_H.pdb','r').read(),format='pdb')
-# Prot=view.getModel()
-# Prot.setStyle({'cartoon':{'arrows':True, 'tubes':True, 'style':'oval', 'color':'white'}})
-# view.addSurface(py3Dmol.VDW,{'opacity':0.6,'color':'white'})
-
-
-# view.addModel(open('1AZ8_lig_H.mol2','r').read(),format='mol2')
-# ref_m = view.getModel()
-# ref_m.setStyle({},{'stick':{'colorscheme':'greenCarbon','radius':0.2}})
-
-# view.zoomTo()
-# view.show()
