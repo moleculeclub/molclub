@@ -75,16 +75,17 @@ class Parameters(compute_utils.Parameters):
     num_threads: int = 1
 
     def __post_init__(self) -> None:
-        if self.method not in ["gfn0-xtb", "gfn1-xtb", "gfn2-xtb", "gfnff"]:
-            raise ValueError(f"{self.method} not a valid xtb method")
-        if self.search_intensity not in [
-            "full",
-            "fast",
-            "faster",
-            "fastest",
-        ]:
+        valid_methods = ["gfn0-xtb", "gfn1-xtb", "gfn2-xtb", "gfnff"]
+        if self.method not in valid_methods:
             raise ValueError(
-                f"{self.search_intensity} not a valid search setting"
+                f"{self.method} not a valid xtb method, allowed: "
+                f"{valid_methods}"
+            )
+        valid_intensities = ["full", "fast", "faster", "fastest"]
+        if self.search_intensity not in valid_intensities:
+            raise ValueError(
+                f"{self.search_intensity} not a valid search setting, allowed"
+                f": {valid_intensities}"
             )
         if self.solvation not in ["alpb", "gbsa"]:
             raise ValueError(f"{self.solvation} not a valid solvation method")

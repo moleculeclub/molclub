@@ -77,6 +77,9 @@ class Parameters(compute.Parameters):
     geom_iters: int = 20
     solvation: str = "cpcmc"
     solvent: str = "water"
+    cons_type: List[str] = field(default_factory=list)
+    cons_atoms: List[List[int]] = field(default_factory=list)
+    cons_value: List[float] = field(default_factory=list)
     # orbitals: bool = False
     num_threads: int = 1
     """
@@ -97,6 +100,13 @@ class Parameters(compute.Parameters):
         Solvation method, can be alpb or gbsa.
     solvent: str = "water"
         Solvent for solvation. See xtb docs for more information.
+    cons_type: Sequence[str] = ("")
+        Constraint type, may be "bond", "angle", or "dihedral".
+    cons_value: Sequence[float] = (0,)
+        Constraint value, ie. bond length of 1.5 Angstroms or bond angle of 90
+        degrees.
+    cons_atoms: Sequence[Sequence[int]] = ((),),
+        Atoms to be constrained.
     num_threads: int = 1
         Number of CPU threads to use.
     """
@@ -104,6 +114,40 @@ class Parameters(compute.Parameters):
     def __post_init__(self) -> None:
         if self.solvation not in ["cpcm", "cpcmc", "smd"]:
             raise ValueError(f"{self.solvation} not a valid solvation method")
+
+    def get_constraints(self) -> str:
+        if len(self.cons_type) != len(self.cons_value) != len(self.cons_atoms):
+            raise ValueError(
+                "lengths of constraint parameters must be the same"
+            )
+        allowed_cons = ["bond", "angle", "dihedral"]
+        n_invalid_cons_types = [
+            1
+            for cons_type in set(self.cons_type)
+            if cons_type not in allowed_cons
+        ]
+        output = " "
+        if self.cons_type == []:
+            output += " "
+        elif sum(n_invalid_cons_types) > 0:
+            raise ValueError("cons_type must be bond, angle, or dihedral")
+        else:
+            type_to_letter = {"bond": "B", "angle": "A", "dihedral": "D"}
+            output += "Constraints\n"
+            for i in range(len(self.cons_type)):
+                cons_atoms = [str(idx) for idx in self.cons_atoms[i]]
+                output += (
+                    "{ "
+                    + type_to_letter[self.cons_type[i]]
+                    + " "
+                    + " ".join(cons_atoms)
+                    + " "
+                    + str(self.cons_value[i])
+                    + " C }\n"
+                )
+            output += "END\n"
+
+        return output
 
     def get_args(self) -> str:
         inp = f"{self.method} {self.basis_set} AUTOAUX\n"
@@ -114,7 +158,7 @@ class Parameters(compute.Parameters):
         elif self.solvation == "smd":
             inp += f'%CPCM SMD TRUE \nSMDSOLVENT "{self.solvent}"\nEND\n'
         inp += f"%SCF MAXITER {self.scf_iters} END\n"
-        inp += f"%GEOM MAXITER {self.geom_iters} END\n"
+        inp += f"%GEOM MAXITER {self.geom_iters}{self.get_constraints()}END\n"
 
         return inp
 
@@ -190,11 +234,11 @@ def job(
         if not isdir(working_dir):
             raise NotADirectoryError(f"{working_dir} is not a directory")
         else:
-            with open(f"{tmp}/orca.inp", "w") as orca_file:
+            with open(f"{working_dir}/orca.inp", "w") as orca_file:
                 orca_file.write(inp)
             with open(f"{working_dir}/orca.out", "w") as orca_out:
                 run(
-                    orca_args=[f"{orca_dir}/orca", "input.inp"],
+                    orca_args=[f"{orca_dir}/orca", "orca.inp"],
                     cwd=working_dir,
                     orca_out=orca_out,
                 )
