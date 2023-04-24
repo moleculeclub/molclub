@@ -1,4 +1,2 @@
 # molclub
-General cheminformatics packages built on top of RDKit.
-
-time to bring in crest and measure boltzmann coverage
+General cheminformatics packages built on top of RDKit. Currently focused on integrating RDKit with xtb and orca.
